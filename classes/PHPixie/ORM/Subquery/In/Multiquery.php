@@ -11,10 +11,10 @@ class Multiquery extends PHPixie\ORM\Subquery\In {
 	}
 	
 	public function add_subquery_condition($query, $logic, $negated, $field, $subquery) {
-		$condition = $query->get_builder('where')
-				->add_placeholder($logic, $negated);
+		$placeholder = $query->get_builder('where')
+				->placeholder($logic, $negated);
 				
-		$step = $this->steps->id_subquery($subquery, $condition, $key_field);
+		$step = $this->steps->in_subquery($subquery, $placeholder, $field);
 		$plan->prepend_step($step);
 	}
 	

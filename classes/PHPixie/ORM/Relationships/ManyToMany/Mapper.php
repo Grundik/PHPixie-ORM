@@ -13,36 +13,28 @@ class Mapper {
 		
 		
 		$config = array(
-			'left_model' => $left_model,
-			'right_model' => $right_model,
-			
-			'left_model_connection' => $owner_model->connection_name(),
-			'right_model_connection' => $item_model->connection_name(),
-			
-			'left_id_field' => $left_repo->id_field(),
-			'right_id_field' => $right_repo->id_field(),
-			
-			'linker' => $config->get('linker', $left_plural.'_'.$right_plural),
+			'left_repo' => $left_repo,
+			'right_repo' => $right_repo,
+			'pivot_connection' => $config->get('pivot_connection', $left_repo->connection_name())
+			'pivot' => $config->get('pivot', $left_repo->plural_model_name().'_'.$left_repo->plural_model_name()),
 		);
 		
 		foreach(array('left', 'right') as $side) {
 			
 			if ($property = $config->get("{$side}.property", null)) {
-				
 				$config["{$side}_property"] = $property;
 				$default_key = $this->inflector->singular($property).'_id';
 				
 			}else {
-				
 				$opposing_side = $side === 'left' ? 'right' : 'left';
-				$opposing_model = $config["{$opposing_side}_model"];
+				$opposing_repo = $config["{$opposing_side}_repo"];
 				
-				$config["{$side}_property"] = $this->inflector->plural($opposing_model);
-				$default_key = $opposing_model.'_id';
+				$config["{$side}_property"] = $opposing_repo->plural_model_name();
+				$default_key = $opposing_repo->model_name().'_id';
 				
 			}
 			
-			$config["linker_{$side}_key"] = $config->get("{$side}.linker_key", $default_key);
+			$config["{$side}_pivot_key"] = $config->get("{$side}.pivot_key", $default_key);
 		}
 		
 		return $config;
@@ -50,11 +42,11 @@ class Mapper {
 	
 	protected function relationship_properties($config) {
 		return array(
-			$params['left_model'] => array(
+			$params['left_repo']->model_name() => array(
 				$params['left_property']
 			),
 			
-			$params['right_model'] => array(
+			$params['right_repo']->model_name() => array(
 				$params['right_property']
 			),
 		);
