@@ -23,7 +23,7 @@ class Plan {
 		return array_shift($this->steps);
 	}
 	
-	public function merge($plan) {
+	public function prepend_plan($plan) {
 		$this->steps = array_merge($plan->steps(), $this->steps);
 	}
 	
