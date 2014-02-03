@@ -12,43 +12,6 @@ class Handler{
 									->related($config[$side.'_property'], $condition);
 	}
 	
-	protected get_pivot_side_subquery($side, $opposing_side, $config, $opposing_query, $alias) {
-	
-		$query = $this->db->query('select', $config['pivot_connection'])
-						->fields(array($config["{$side}_pivot_key"]))
-						->target($config['pivot']);
-						
-		$this->add_subquery_condition($query, $group->logic, $group->negated(), $config['owner_id_field'], $opposing_query);
-		return $query;
-	}
-	
-	protected function get_side_ids_subquery($side, $config, $conditions, $alias) {
-		$repo = $config["{$side}_repo"];
-		
-		$query = $this->db->query('select', $repo->connection_name())
-						->fields(array($repo->id_field()))
-						->target($repo->table());
-						
-		$this->mapper->add_conditions($query, $conditions);
-		return $query;
-	}
-	
-	protected function process_side_relationship($side, $opposing_side, $config, $query, $group, $relationship, $plan) {
-		
-		$opposing_subquery = $this->get_side_ids_subquery($opposing_side, $config, $conditions, $alias);
-		$pivot_subquery = get_pivot_side_subquery($side, $config, $conditions, $alias);
-		$this->id_strategy->add_condition($query, 'and', false, $config["{$opposing_side}_pivot_key"], $opposing_subquery);
-		$this->id_strategy->add_condition($query, $group->logic, $group->negated(), $config["{$side}_repo"]->id_field(), $pivot_subquery);
-	}
-	
-	public function process_right_relationship($config, $query, $group, $relationship, $plan) {
-		$this->process_side_relationship('right', 'left', $config, $query, $group, $relationship, $plan);
-	}
-	
-	public function process_left_relationship($config, $query, $group, $relationship, $plan) {
-		$this->process_side_relationship('left', 'right', $config, $query, $group, $relationship, $plan);
-	}
-	
 	protected function process_add_ids($config, $side, $opposing_side, $side_id, $ids) {
 		$keys = array(
 					$config["{$side}_pivot_key"], 
@@ -63,6 +26,43 @@ class Handler{
 															->target($config['pivot'])
 															->batch_data($keys, $values)
 															->execute();
+	}
+	
+	public function link_items_plan($side, $side_collection, $opposing_collection, $config) {
+		$plan = $this->orm->query_plan();
+		
+		$opposing_side = $side === 'left' ? 'right' : 'left';
+		$keys = array(
+					$config["{$side}_pivot_key"], 
+					$config["{$opposing_side}_pivot_key"]
+				);
+		
+		$query = $this->db->query('insert', $config['pivot_connection']);
+		$this->set_collection($query, $config['pivot']);
+		
+		$insert_step = $this->steps->cross_insert($query, $keys);
+		
+		$side_id_field = $config["{$side}_repo"]->id_field();
+		$opposing_id_field = $config["{$opposing_side}_repo"]->id_field();
+		
+		$insert_step->add_left_ids($side_collection->field($side_id_field) , true);
+		$insert_step->add_right_ids($opposing_collection->field($opposing_id_field) , true);
+		
+		$collections = array(
+			'left' => $side_collection,
+			'right' => $opposing_collection,
+		);
+		
+		foreach($collections as $side => $collection)
+			foreach($collection->queries() as $query) {
+				$subplan = $query->map();
+				$subquery = $subplan->pop_result_query();
+				$plan->prepend_plan($subplan);
+				$insert_step->add_query($side, $subquery);
+			}
+		
+		$plan->push($insert_step);
+		return $plan;
 	}
 	
 	protected function process_add($config, $side, $opposing_side, $model, $collection) {
