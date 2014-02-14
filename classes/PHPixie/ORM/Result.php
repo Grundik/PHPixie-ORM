@@ -2,6 +2,7 @@
 
 namespace PHPixie\ORM;
 
+
 class Result impelements \Iterator{
 	
 	protected $repository;
