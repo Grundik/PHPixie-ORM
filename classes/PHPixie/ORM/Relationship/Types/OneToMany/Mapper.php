@@ -22,15 +22,4 @@ class Mapper {
 		);
 	}
 	
-	protected function relationship_properties($config) {
-		return array(
-			$params['owner_repo']->model_name() => array(
-				$params['owner_items_property']
-			),
-			
-			$params['item_repo']->model_name() => array(
-				$params['item_property']
-			),
-		);
-	}
 }
