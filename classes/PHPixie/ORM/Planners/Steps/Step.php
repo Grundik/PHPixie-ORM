@@ -2,6 +2,7 @@
 
 namespace PHPixie\ORM\Query\Plan;
 
-interface Step {
-	public function execute();
+interface Step
+{
+    public function execute();
 }
